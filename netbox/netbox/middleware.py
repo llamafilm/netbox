@@ -168,7 +168,7 @@ class RemoteUserMiddleware(RemoteUserMiddleware_):
             user.save()
 
             if is_api_request(request):
-                # Skip login because API requests are authenticated by custom header
+                # Skip login because API requests do not have CSRF tokens
                 return self.get_response(request)
 
             # Set request.user and persist user in the session
