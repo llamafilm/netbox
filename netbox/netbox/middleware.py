@@ -167,9 +167,9 @@ class RemoteUserMiddleware(RemoteUserMiddleware_):
                 user.email = request.META[settings.REMOTE_AUTH_USER_EMAIL]
             user.save()
 
-            if request.META['PATH_INFO'].startswith('/api/'):
+            if is_api_request(request):
                 # Skip login because API requests are authenticated by custom header
-                return
+                return self.get_response(request)
 
             # Set request.user and persist user in the session
             # by logging the user in.
