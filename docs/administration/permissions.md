@@ -56,6 +56,47 @@ To achieve a logical OR with a different set of constraints, define multiple obj
 
 Additionally, where multiple permissions have been assigned for an object type, their collective constraints will be merged using a logical "OR" operation.
 
+### Constraint Negation with Invert
+
+Constraints can be negated using an `invert` key to match objects that do NOT meet the constraint criteria:
+
+```json
+{
+  "vrf_id__isnull": false,
+  "invert": true
+}
+```
+
+This constraint grants access only to objects where `vrf_id` is null (negation of "vrf_id is not null"). The `invert` key is reserved and will not be used as a filter lookup.
+
+When `invert` is true, the entire constraint is negated (NOT of all conditions ANDed together):
+
+```json
+{
+  "status": "active",
+  "region__name": "Americas",
+  "invert": true
+}
+```
+
+This grants access to all objects **except** those that are both active AND in the Americas region.
+
+**Use case example:** A common scenario is importing data from an external source. You might wish to restrict edit access to imported objects while allowing unrestricted access to manually created objects:
+
+```json
+[
+  {
+    "vrf_id__isnull": true
+  },
+  {
+    "vrf_id__isnull": true,
+    "invert": true
+  }
+]
+```
+
+The first constraint allows editing prefixes in the global VRF (where `vrf_id` is null), while the second constraint allows editing all prefixes NOT in the global VRF (where `vrf_id` is not null). Together, these constraints cover all prefixes.
+
 ### User Token
 
 When defining a permission constraint, administrators may use the special token `$user` to reference the current user at the time of evaluation. This can be helpful to restrict users to editing only their own journal entries, for example. Such a constraint might be defined as:
@@ -77,12 +118,14 @@ While permissions are typically assigned to specific groups and/or users, it is 
 | Constraints | Description |
 | ----------- | ----------- |
 | `{"status": "active"}` | Status is active |
-| `{"status__in": ["planned", "reserved"]}` | Status is active **OR** reserved |
+| `{"status__in": ["planned", "reserved"]}` | Status is planned **OR** reserved |
 | `{"status": "active", "role": "testing"}` | Status is active **AND** role is testing |
 | `{"name__startswith": "Foo"}` | Name starts with "Foo" (case-sensitive) |
 | `{"name__iendswith": "bar"}` | Name ends with "bar" (case-insensitive) |
-| `{"vid__gte": 100, "vid__lt": 200}` | VLAN ID is greater than or equal to 100 **AND** less than 200 |
-| `[{"vid__lt": 200}, {"status": "reserved"}]` | VLAN ID is less than 200 **OR** status is reserved |
+| `{"vid__gte": 100, "vid__lt": 200}` | VLAN ID is >= 100 **AND** < 200 |
+| `[{"vid__lt": 200}, {"status": "reserved"}]` | VLAN ID < 200 **OR** status is reserved |
+| `{"vrf_id__isnull": true, "invert": true}` | VRF ID is not null (inverted constraint) |
+| `{"status": "active", "invert": true}` | Status is not active (inverted constraint) |
 
 ## Permissions Enforcement
 
@@ -111,3 +154,4 @@ Site.objects.filter(
 ### Creating and Modifying Objects
 
 The same sort of logic is in play when a user attempts to create or modify an object in NetBox, with a twist. Once validation has completed, NetBox starts an atomic database transaction to facilitate the change, and the object is created or saved normally. Next, still within the transaction, NetBox issues a second query to retrieve the newly created/updated object, filtering the restricted queryset with the object's primary key. If this query fails to return the object, NetBox knows that the new revision does not match the constraints imposed by the permission. The transaction is then rolled back, leaving the database in its original state prior to the change, and the user is informed of the violation.
+

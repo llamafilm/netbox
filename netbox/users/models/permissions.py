@@ -43,9 +43,17 @@ class ObjectPermission(CloningMixin, models.Model):
         verbose_name=_('constraints'),
         help_text=_("Queryset filter matching the applicable objects of the selected type(s)")
     )
+    invert = models.BooleanField(
+        verbose_name=_('invert'),
+        default=False,
+        help_text=_(
+            'If set, the constraint set for this permission will be negated. Applies to the entire permission '
+            'set (all listed constraints and object types).'
+        )
+    )
 
     clone_fields = (
-        'description', 'enabled', 'object_types', 'actions', 'constraints',
+        'description', 'enabled', 'object_types', 'actions', 'constraints', 'invert',
     )
 
     objects = RestrictedQuerySet.as_manager()
@@ -78,9 +86,30 @@ class ObjectPermission(CloningMixin, models.Model):
         """
         Return all constraint sets as a list (even if only a single set is defined).
         """
+        # Normalize to a list so callers can always iterate
         if type(self.constraints) is not list:
-            return [self.constraints]
-        return self.constraints
+            raw_constraints = [self.constraints]
+        else:
+            raw_constraints = list(self.constraints)
+
+        # If this permission is marked as inverted at the permission-set level, apply that
+        # by returning copies of each constraint augmented with the 'invert' key. We purposely
+        # return copies here to avoid mutating the stored JSON in the database.
+        if self.invert:
+            augmented = []
+            for c in raw_constraints:
+                if c is None:
+                    # Represent a negated-empty constraint as a constraint dict with invert True
+                    augmented.append({'invert': True})
+                else:
+                    # Copy constraint dict and force the invert flag
+                    copied = dict(c) if isinstance(c, dict) else c
+                    if isinstance(copied, dict):
+                        copied['invert'] = True
+                    augmented.append(copied)
+            return augmented
+
+        return raw_constraints
 
     def get_absolute_url(self):
         return reverse('users:objectpermission', args=[self.pk])

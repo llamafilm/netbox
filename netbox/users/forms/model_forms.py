@@ -332,8 +332,18 @@ class ObjectPermissionForm(forms.ModelForm):
         help_text=_(
             'JSON expression of a queryset filter that will return only permitted objects. Leave null '
             'to match all objects of this type. A list of multiple objects will result in a logical OR '
-            'operation.'
+            'operation. Each constraint supports legacy flat format (e.g. {"status": "active"}). '
+            'Use the separate "Invert constraints" checkbox to negate the entire permission set.'
         ),
+    )
+
+    invert = forms.BooleanField(
+        required=False,
+        label=_('Invert constraints'),
+        help_text=_(
+            'If checked, the constraints defined above will be negated for the entire permission set. '
+            'This applies to all selected object types.'
+        )
     )
 
     fieldsets = (
@@ -341,13 +351,13 @@ class ObjectPermissionForm(forms.ModelForm):
         FieldSet('can_view', 'can_add', 'can_change', 'can_delete', 'actions', name=_('Actions')),
         FieldSet('object_types', name=_('Objects')),
         FieldSet('groups', 'users', name=_('Assignment')),
-        FieldSet('constraints', name=_('Constraints')),
+        FieldSet('invert', 'constraints', name=_('Constraints')),
     )
 
     class Meta:
         model = ObjectPermission
         fields = [
-            'name', 'description', 'enabled', 'object_types', 'users', 'groups', 'constraints', 'actions',
+            'name', 'description', 'enabled', 'object_types', 'users', 'groups', 'invert', 'constraints', 'actions',
         ]
 
     def __init__(self, *args, **kwargs):
@@ -361,6 +371,8 @@ class ObjectPermissionForm(forms.ModelForm):
             # Populate assigned users and groups
             self.fields['groups'].initial = self.instance.groups.values_list('id', flat=True)
             self.fields['users'].initial = self.instance.users.values_list('id', flat=True)
+            # Populate invert checkbox
+            self.fields['invert'].initial = bool(self.instance.invert)
 
             # Check the appropriate checkboxes when editing an existing ObjectPermission
             for action in ['view', 'add', 'change', 'delete']:

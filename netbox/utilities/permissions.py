@@ -87,7 +87,28 @@ def qs_filter_from_constraints(constraints, tokens=None):
     """
     Construct a Q filter object from an iterable of ObjectPermission constraints.
 
+    Supports constraint negation via an 'invert' key:
+
+    Standard constraint (all keys AND together):
+       {"status": "active", "region__name": "Americas"}
+
+    Inverted constraint (negation of all keys):
+       {"status": "active", "region__name": "Americas", "invert": true}
+
+    The 'invert' key is reserved and will not be used as a filter lookup.
+    When invert=true, the resulting constraint is negated (NOT of all conditions).
+
+    Within a single constraint dict:
+    - All filter keys are ANDed together
+    - If 'invert' is true, the entire result is negated
+
+    Across multiple constraint dicts:
+    - They are ORed together
+
+    Lookups use standard Django ORM syntax (same as QuerySet.filter()).
+
     Args:
+        constraints: An iterable of constraint dicts.
         tokens: A dictionary mapping string tokens to be replaced with a value.
     """
     if tokens is None:
@@ -103,10 +124,27 @@ def qs_filter_from_constraints(constraints, tokens=None):
             return list(map(lambda v: tokens.get(v, v), value))
         return tokens.get(value, value)
 
+    def _constraint_to_q(constraint):
+        """Convert a single constraint dict to a Django Q object."""
+        # Extract the 'invert' key without modifying the original
+        should_invert = constraint.get('invert', False)
+
+        # Build Q from all filter keys except 'invert'
+        q = Q()
+        for key, value in constraint.items():
+            if key != 'invert':
+                q &= Q(**{key: _replace_tokens(value, tokens)})
+
+        # Invert if requested
+        if should_invert:
+            q = ~q
+
+        return q
+
     params = Q()
     for constraint in constraints:
         if constraint:
-            params |= Q(**{k: _replace_tokens(v, tokens) for k, v in constraint.items()})
+            params |= _constraint_to_q(constraint)
         else:
             # Found null constraint; permit model-level access
             return Q()
