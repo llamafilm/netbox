@@ -12,7 +12,7 @@ from core.models import ObjectType
 from ipam.formfields import IPNetworkFormField
 from ipam.validators import prefix_validator
 from netbox.config import get_config
-from netbox.preferences import PREFERENCES
+from netbox.preferences import PREFERENCES, get_rack_elevation_templates
 from users.constants import *
 from users.models import *
 from utilities.data import flatten_dict
@@ -66,7 +66,7 @@ class UserConfigForm(forms.ModelForm, metaclass=UserConfigFormMetaclass):
     fieldsets = (
         FieldSet(
             'locale.language', 'ui.copilot_enabled', 'pagination.per_page', 'pagination.placement',
-            'ui.htmx_navigation', 'ui.tables.striping',
+            'ui.htmx_navigation', 'ui.racks.template', 'ui.tables.striping',
             name=_('User Interface')
         ),
         FieldSet('data_format', 'csv_delimiter', name=_('Miscellaneous')),
@@ -96,6 +96,9 @@ class UserConfigForm(forms.ModelForm, metaclass=UserConfigFormMetaclass):
         # Disable Copilot preference if it has been disabled globally
         if not get_config().COPILOT_ENABLED:
             self.fields['ui.copilot_enabled'].disabled = True
+
+        # Refresh rack elevation template choices from current config
+        self.fields['ui.racks.template'].choices = get_rack_elevation_templates()
 
     def save(self, *args, **kwargs):
 

@@ -17,6 +17,7 @@ from django.utils.http import urlencode
 from netbox.config import get_config
 from utilities.data import array_to_ranges
 from utilities.html import foreground_color
+from utilities.jinja2 import render_jinja2
 from dcim.constants import RACK_ELEVATION_BORDER_WIDTH
 
 
@@ -30,21 +31,34 @@ GRADIENT_BLOCKED = '#ffc0c0'
 STROKE_RESERVED = '#4d4dff'
 
 
-def get_device_name(device):
-    if device.label:
-        name = device.label
-    else:
-        name = str(device.device_type)
+def get_device_name(device, template=None):
+    """
+    Return the label to be displayed for a device in the rack elevation.
+    Render Jinja2 template if provided, otherwise use this default format:
+    <label> or <device_type>
+    If the device has device bays, the number of occupied bays is appended.
+    """
+
+    name = ''
+    if template:
+        try:
+            name = render_jinja2(template, {'device': device})
+        except Exception:
+            pass
+
+    if not name:
+        name = device.label or str(device.device_type)
+
     if device.devicebay_count:
         name += ' ({}/{})'.format(device.get_children().count(), device.devicebay_count)
 
     return name
 
 
-def get_device_description(device):
+def get_device_description(device, template=None):
     """
-    Return a description for a device to be rendered in the rack elevation in the following format
-
+    Return a description for a device to be rendered in the rack elevation tooltip.
+    Render Jinja2 template if provided, otherwise use this default format:
     Name: <name>
     Role: <role>
     Status: <status>
@@ -53,6 +67,13 @@ def get_device_description(device):
     Serial: <serial> (if defined)
     Description: <description> (if defined)
     """
+
+    if template:
+        try:
+            return render_jinja2(template, {'device': device})
+        except Exception:
+            pass
+
     description = f'Name: {device.name}'
     description += f'\nRole: {device.role}'
     description += f'\nStatus: {device.get_status_display()}'
@@ -108,6 +129,14 @@ class RackElevationSVG:
         self.unit_height = unit_height or config.RACK_ELEVATION_DEFAULT_UNIT_HEIGHT
         self.legend_width = legend_width or config.RACK_ELEVATION_DEFAULT_LEGEND_WIDTH
         self.margin_width = margin_width or config.RACK_ELEVATION_DEFAULT_MARGIN_WIDTH
+
+        # Get user's display template preference (if any)
+        template = {}
+        if user is not None:
+            template_name = user.config.get('ui.racks.template')
+            template = (config.RACK_ELEVATION_TEMPLATES or {}).get(template_name) or {}
+        self.label_template = template.get('label')
+        self.tooltip_template = template.get('tooltip')
 
         # Determine the subset of devices within this rack that are viewable by the user, if any
         permitted_devices = self.rack.devices
@@ -176,8 +205,8 @@ class RackElevationSVG:
         return x, y
 
     def _draw_device(self, device, coords, size, color=None, image=None):
-        name = get_device_name(device)
-        description = get_device_description(device)
+        name = get_device_name(device, self.label_template)
+        description = get_device_description(device, self.tooltip_template)
         text_color = f'#{foreground_color(color)}' if color else '#000000'
         text_coords = (
             coords[0] + size[0] / 2,

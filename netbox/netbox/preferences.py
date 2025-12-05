@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
+from netbox.config import get_config
 from netbox.registry import registry
 from users.preferences import UserPreference
 from utilities.constants import CSV_DELIMITERS
@@ -20,6 +21,15 @@ def get_csv_delimiters():
         if v.strip():
             label = f'{label} ({v})'
         choices.append((k, label))
+    return choices
+
+
+def get_rack_elevation_templates():
+    """Return choices for rack elevation templates defined in RACK_ELEVATION_TEMPLATES config."""
+    config = get_config()
+    templates = config.RACK_ELEVATION_TEMPLATES
+    choices = [('', _('Default'))]
+    choices.extend((name, name) for name in templates.keys())
     return choices
 
 
@@ -73,6 +83,11 @@ PREFERENCES = {
         ),
         default='bottom',
         description=_('Where the paginator controls will be displayed relative to a table')
+    ),
+    'ui.racks.template': UserPreference(
+        label=_('Rack elevation template'),
+        choices=get_rack_elevation_templates(),
+        description=_('Jinja2 template for customizing device labels in rack elevations.'),
     ),
     'ui.tables.striping': UserPreference(
         label=_('Striped table rows'),

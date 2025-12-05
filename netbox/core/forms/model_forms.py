@@ -153,7 +153,8 @@ class ConfigRevisionForm(forms.ModelForm, metaclass=ConfigFormMetaclass):
 
     fieldsets = (
         FieldSet(
-            'RACK_ELEVATION_DEFAULT_UNIT_HEIGHT', 'RACK_ELEVATION_DEFAULT_UNIT_WIDTH', name=_('Rack Elevations')
+            'RACK_ELEVATION_DEFAULT_UNIT_HEIGHT', 'RACK_ELEVATION_DEFAULT_UNIT_WIDTH', 'RACK_ELEVATION_TEMPLATES',
+            name=_('Rack Elevations')
         ),
         FieldSet(
             'POWERFEED_DEFAULT_VOLTAGE', 'POWERFEED_DEFAULT_AMPERAGE', 'POWERFEED_DEFAULT_MAX_UTILIZATION',

@@ -93,6 +93,19 @@ PARAMS = (
         description=_("Default unit width for rendered rack elevations"),
         field=forms.IntegerField
     ),
+    ConfigParam(
+        name='RACK_ELEVATION_TEMPLATES',
+        label=_('Rack elevation templates'),
+        default={},
+        description=_(
+            "Jinja2 templates to customize rack elevation display (JSON). "
+            "Reference the device as <code>{{device}}</code>."
+        ),
+        field=forms.JSONField,
+        field_kwargs={
+            'widget': forms.Textarea(),
+        },
+    ),
 
     # Power
     ConfigParam(

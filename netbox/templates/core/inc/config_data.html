@@ -11,8 +11,16 @@
     <td>{{ config.RACK_ELEVATION_DEFAULT_UNIT_HEIGHT }}</td>
   </tr>
   <tr>
-    <th scope="row" class="border-0 ps-3">{% trans "Default unit width" %}</th>
-    <td class="border-0">{{ config.RACK_ELEVATION_DEFAULT_UNIT_WIDTH }}</td>
+    <th scope="row" class="ps-3">{% trans "Default unit width" %}</th>
+    <td>{{ config.RACK_ELEVATION_DEFAULT_UNIT_WIDTH }}</td>
+  </tr>
+  <tr>
+    <th scope="row" class="border-0 ps-3">{% trans "Display templates" %}</th>
+    {% if config.RACK_ELEVATION_TEMPLATES %}
+      <td class="border-0"><pre>{{ config.RACK_ELEVATION_TEMPLATES|json }}</pre></td>
+    {% else %}
+      <td class="border-0">{{ ''|placeholder }}</td>
+    {% endif %}
   </tr>
 
   {# Power feeds #}
